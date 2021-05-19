@@ -1,0 +1,16 @@
+pandas 
+beautifulsoup4
+lxml
+validators
+nltk
+urlopen
+unidecode
+spacy
+pycontractions
+tensorflow
+sklearn
+keras
+pickle5
+
+
+

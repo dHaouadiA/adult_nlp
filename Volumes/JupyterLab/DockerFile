@@ -1,0 +1,37 @@
+FROM ubuntu:18.04
+
+ENV PYTHON_VERSION 3.7
+ENV CONDA_ENV_NAME jupyterlab
+ENV LANG C.UTF-8
+
+
+RUN apt-get update && apt-get install -y \
+    apt-utils \
+    ca-certificates \
+    apt-transport-https \
+    gnupg2 \
+    wget \
+    unzip \
+    curl \
+    bzip2 \
+    git \
+    sudo \
+    fonts-liberation
+
+# Installation miniconda3
+RUN curl -sSL http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -o /tmp/miniconda.sh && \
+    bash /tmp/miniconda.sh -bfp /usr/local && \
+    rm -rf /tmp
+# Set up conda environment
+RUN conda update -y conda && \
+    conda create -n ${CONDA_ENV_NAME} python=${PYTHON_VERSION}
+ENV PATH /opt/conda/envs/${CONDA_ENV_NAME}/bin:$PATH
+RUN echo "source activate ${CONDA_ENV_NAME}" > ~/.bashrc
+
+# Install jupyter and notebook extension
+RUN /bin/bash -c "source ~/.bashrc && conda install -q -y jupyter ipywidgets~=7.4.2 && \
+    jupyter nbextension enable --py widgetsnbextension && \
+    jupyter notebook --generate-config"
+
+# Install jupyterlab
+RUN /bin/bash -c

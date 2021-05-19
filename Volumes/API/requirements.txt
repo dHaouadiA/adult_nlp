@@ -1,0 +1,17 @@
+pickle5
+flask
+flask-restful
+gunicorn
+pandas 
+beautifulsoup4
+lxml
+validators
+nltk
+urlopen
+unidecode
+tensorflow
+spacy
+sklearn
+keras
+
+

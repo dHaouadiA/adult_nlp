@@ -1,0 +1,9 @@
+Volumes\Processing\data
+# Ignore Data csv files
+*.csv
+
+# Ignore Lab checkpoints
+.ipynb_checkpoints
+
+# Ignore model h5
+*.h5

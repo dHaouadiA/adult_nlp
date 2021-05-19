@@ -1,0 +1,1 @@
+nice docker build --pull --rm --tag python_processing:build .

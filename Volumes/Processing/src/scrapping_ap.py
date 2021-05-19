@@ -1,0 +1,162 @@
+
+import urllib.request
+import requests, sys
+from bs4 import BeautifulSoup
+import pandas as pd
+import numpy as np
+import datetime as dt
+def scrap_raw_text(url):
+    """This function return the raw text of a given website
+
+    Arguments:
+        url {[str]} -- [website Url]
+    """
+    hdr = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_3) AppleWebKit/537.75.14 (KHTML, like Gecko) Version/7.0.3 Safari/7046A194A'}
+
+    print('scraping from {}'.format(url))
+    if (chek_Url(url)):
+        try:
+            #page= requests.get(url)
+            req = Request(url,headers=hdr)
+            page = urlopen(req)
+            #html_contents = page.content
+            #soup = BeautifulSoup(html_contents, "html.parser")
+            soup = BeautifulSoup(page)
+
+            for script in soup(["script", "style","a","<div id=\"bottom\" >"]):
+                script.extract()    
+            text = soup.findAll(text=True)
+            ws_corpus=""
+            for p in text:
+                ws_corpus+=' '+p
+            
+            ws_corpus=ws_corpus.replace('\n', ' ').replace('\r',' ')
+            #print(ws_corpus)
+        except Exception:
+            return np.nan
+    else:
+        print('invalid url')
+        return np.nan
+    
+    return  ws_corpus
+
+from bs4 import BeautifulSoup
+from urllib.request import Request, urlopen
+def get_innapropriate_links():
+    site= "https://toppornsites.com/"
+    hdr = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_3) AppleWebKit/537.75.14 (KHTML, like Gecko) Version/7.0.3 Safari/7046A194A'}
+    req = Request(site,headers=hdr)
+    page = urlopen(req)
+    soup = BeautifulSoup(page)
+    url_list=[]
+    for a in soup.find_all('a', href=True):
+        if  not (( "#" in a['href']) or ("javascript:;" in a['href'])):
+            url_list.append(a['href'])
+    return list(set(url_list))
+
+def add_listUrl_to_ScrapingDBcsv(url_list):
+    #Open csv file at start
+    outfile = open('ScrapingDB.csv', 'a', newline='')
+    w = csv.writer(outfile)  # Need to write the user input to the .csv file.
+    label= 'Adult'
+    for url in url_list:
+        w.writerow([url, label])  
+    df =pd.read_csv('ScrapingDB.csv')
+    df.drop_duplicates(inplace=True)
+    df.columns=['url','label']
+    df.to_csv('ScrapingDB.csv', index= False)
+
+def cleaning_url_classification(csv_file='URL Classification.csv'):
+    #add header 
+    df=pd.read_csv(csv_file,header=None)
+    #drop index from columns 
+    df.drop(df.columns[0], axis=1, inplace=True)
+    col_Names=["url", "label"]
+    df=pd.read_csv(csv_file,header=None, names=col_Names)
+    df.dropna(inplace=True)
+    df.drop_duplicates(inplace=True)
+    df2=df.to_csv('urlClassificationCleaned.csv', index=False)
+    return df2
+
+def extract_english_sites(csv_file='urlClassificationCleaned.csv'):
+    df=pd.read_csv(csv_file)
+    df=df[df['url'].str.contains('.com')]
+    df.shape
+    df.label.value_counts()
+    df2=df.to_csv('urlclassification_EnglishSites.csv', index=False)
+    return df2
+
+def concat_ScrapingDB_UrlClassification_EnglishSites(csv_file1='ScrapingDB.csv',csv_file2='urlclassification_EnglishSites.csv'):
+   
+    df1=pd.read_csv(csv_file1)
+    df2=pd.read_csv(csv_file2)
+    #we have to concat ADULT site from scraping DB with Adutl site in urlclassification
+    #ScrapingDB have better data quality so we selected it first at concatenation
+    # so we can garantee that all of its contents will be scraped.
+    df=pd.concat([df1,df2])
+    df.info()
+    df3=df.to_csv('dataconcatenation.csv',mode='a', index=False)
+    return df3
+
+def reduce_data_size(csv_file='dataconcatenation.csv'):
+# we gonna take 500 sites from every topic except Adult=7000= sum of all other topics
+    dataconcatenation= pd.read_csv(csv_file)
+    for i,j in dataconcatenation['label'].value_counts().iteritems():
+        if(j>500) and i!='Adult':
+            df_auxiliaire=dataconcatenation[dataconcatenation['label']==i]
+            dataconcatenation=dataconcatenation[dataconcatenation['label']!=i]
+            dataconcatenation=pd.concat([df_auxiliaire.iloc[:500,:],dataconcatenation])
+        if(j>7000) and i== 'Adult':
+            df_auxiliaire=dataconcatenation[dataconcatenation['label']==i]
+            dataconcatenation=dataconcatenation[dataconcatenation['label']!=i]
+            dataconcatenation=pd.concat([df_auxiliaire.iloc[:7000,:],dataconcatenation])
+    #store the data into csv file
+    dataconcatenation.to_csv('db_URL.csv', index=False)
+
+def scrap_from_db_URL(url_DB='db_URL.csv'):
+    df=pd.read_csv(url_DB)
+    #add 'corpus' column from scrapped url 
+    df['corpus']=df['url'].apply(scrap_raw_text)
+    #add new column 'datetime'
+    df['dateTime']=pd.Series([dt.datetime.now().strftime('%Y-%m-%d')]*len(df['url']))
+    df=df.dropna()
+    df.to_csv('CorpusFromWebSite.csv',mode='a', index=False)
+    return df
+
+# Check for URL Validation:
+def chek_Url(url):
+    import validators
+    return validators.url(url)
+
+
+# Scraping csv file input:
+import csv
+def manualentry_Scrapingdb():
+
+    #Open csv file at start
+    outfile = open('ScrapingDB.csv', 'a', newline='')
+    w = csv.writer(outfile)  # Need to write the user input to the .csv file.
+
+    #Everything wrapped in a while True loop, you can change to any loop accordingly
+    while True:
+        url = input("Enter an url: ")  # Generate data for each column to fill in to the output file.
+        while (not chek_Url(url)):
+            url = input("Please a valid Url: ")
+         
+        label = input("Enter a label: ")  # Each line asks the user  add data do the line.
+        print(url, label)  # Prints the line of user data
+
+        input4 = input("Append to Scraping DB Y/N : ")  # Asks user to append the data to the output file.
+        if input4.lower() == "y":
+            w.writerow([url, label])  # <-This is the portion that seems to fall apart.
+            print("Row added")
+        if input4.lower() == "n":
+            print("SKIPPING. RESTARTING....")
+        #If you see stop, stop writing, close the file and exit
+        if input4.lower() == 'stop':
+            print('Not writing anymore! Stopping')
+            outfile.close()
+            exit()
+        else:
+            print("Invalid entry restarting program.") 
+
